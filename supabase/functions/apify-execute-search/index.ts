@@ -80,16 +80,27 @@ serve(async (req) => {
       );
     }
 
+    const tokenMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+    const jwt = tokenMatch?.[1]?.trim();
+    if (!jwt) {
+      return new Response(
+        JSON.stringify({ error: 'Não autenticado: token inválido' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    // Em edge functions não existe storage de sessão; valide explicitamente via JWT
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(jwt);
     if (userError || !user) {
+      console.error('Auth error (getUser):', userError);
       return new Response(
-        JSON.stringify({ error: 'Utilizador não encontrado' }),
+        JSON.stringify({ error: 'Não autenticado', details: userError?.message ?? null }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
