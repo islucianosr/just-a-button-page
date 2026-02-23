@@ -7,7 +7,6 @@ import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import Settings from "./pages/Settings";
 import NewSearch from "./pages/NewSearch";
-import NewSearch from "./pages/NewSearch";
 import UploadXML from "./pages/UploadXML";
 import Results from "./pages/Results";
 import Auth from "./pages/Auth";
