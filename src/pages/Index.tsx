@@ -1,43 +1,94 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, Settings, LogOut, Search, MessageCircle, LayoutGrid } from 'lucide-react';
 import logo from '@/assets/logo.svg';
 import { DashboardStats } from '@/components/DashboardStats';
 
 const Index = () => {
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        if (!session) {
-          navigate('/auth');
-        }
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (!session) {
-        navigate('/auth');
+      // Se a sessão cair (logout/expiração), redireciona imediatamente.
+      if (!nextSession) {
+        navigate('/auth', { replace: true });
       }
     });
+
+    supabase.auth
+      .getSession()
+      .then(({ data: { session: initialSession } }) => {
+        setSession(initialSession);
+        if (!initialSession) {
+          navigate('/auth', { replace: true });
+        }
+      })
+      .finally(() => {
+        setCheckingSession(false);
+      });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    navigate('/auth');
+    navigate('/auth', { replace: true });
   };
 
+  if (checkingSession) {
+    return (
+      <main className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-10">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-10 w-10 rounded-md" />
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-3 w-44" />
+            </div>
+          </div>
+
+          <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="rounded-lg border bg-card/50 p-6">
+                <Skeleton className="h-4 w-24 mb-4" />
+                <Skeleton className="h-8 w-16" />
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-10 grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="rounded-lg border bg-card/50 p-6">
+                <Skeleton className="h-5 w-40 mb-3" />
+                <Skeleton className="h-4 w-56 mb-6" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   if (!session) {
-    return null;
+    return (
+      <main className="min-h-screen bg-background">
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-sm text-muted-foreground">Redirecionando…</p>
+        </div>
+      </main>
+    );
   }
 
   return (
